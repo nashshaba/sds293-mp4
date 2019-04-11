@@ -1,6 +1,6 @@
 ---
 title: "SDS/CSC 293 Mini-Project 4: CART"
-author: "Group XX: WRITE YOUR NAMES HERE"
+author: "Group 18: Nashshaba Nawaz & Irene Ryan"
 date: "Wednesday, April 17^th^, 2019"
 output:
   html_document:
@@ -88,14 +88,18 @@ Perform the following exploratory data analyses:
 **Categorical predictor**: Create a visualization of the categorical predictor variable `color`.
 
 ```{r}
-
+ggplot(data=training,aes(x=color))+
+  geom_bar()+
+  labs(title="Distributuion of the categorical predictor variable", x="Dominant Color of the Creature")
 ```
 
 
 **Outcome variable**: Create a visualization of the categorical predictor variable `type`.
 
 ```{r}
-
+ggplot(data=training,aes(x=type))+
+  geom_bar(fill="bisque4")+
+  labs(title="Distributuion of the categorical outcome variable", x="Creature Type")
 ```
 
 
@@ -104,10 +108,25 @@ Perform the following exploratory data analyses:
 **Numerical predictors**: Create a visualization of the relationship of all four numerical predictor variables at once (`bone_length`, `rotting_flesh`, `hair_length`, `has_soul`) using the `ggpairs()` function from the `GGally` [package](http://ggobi.github.io/ggally/#ggallyggpairs). 
 
 ```{r}
+plot <- ggpairs(training, columns = c("bone_length", "rotting_flesh", "hair_length","has_soul"), columnLabels = c("Avg bone length", "% of rotting flesh", "Avg hair length","% of soul"))+
+  labs(title = "Relationship between all four numerical predictor variables")
 
+plot
 ```
 
 **Relationship of categorical predictor and outcome variable**: Create a visualization of the relationship between the categorical outcome variable `type` and any predictor varible of your choosing.
+
+```{r}
+ggplot(training, aes(x = color, fill = type)) +
+  geom_bar(position = "fill") +
+  labs(fill = "Types of creature", title = "Distribution of color of creature split by creature type") 
+```
+
+```{r}
+ggplot(data=training,aes(x=type, y=rotting_flesh))+
+  geom_boxplot()+
+  labs(x="Creature Type", y="% of rotting flesh in the creature",title = "Distribution of percentage of rotting flesh split by type of creature") 
+```
 
 
 
