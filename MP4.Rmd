@@ -119,7 +119,7 @@ plot
 ```{r}
 ggplot(training, aes(x = color, fill = type)) +
   geom_bar(position = "fill") +
-  labs(fill = "Types of creature", title = "Distribution of color of creature split by creature type") 
+  labs(fill = "Types of creature", title = "Distribution of color of creature split by creature type", y="Proportion") 
 ```
 
 ```{r}
