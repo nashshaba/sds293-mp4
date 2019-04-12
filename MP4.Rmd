@@ -18,6 +18,7 @@ output:
 library(tidyverse)
 library(GGally)
 library(rpart)
+library(yardstick)
 
 # Set default behavior for all code chunks here:
 knitr::opts_chunk$set(
@@ -145,6 +146,45 @@ ggplot(data=training,aes(x=type, y=rotting_flesh))+
 1. Compute the "classification accuracy".
 
 ```{r, fig.height = 9, fig.width=16}
+
+# Fit CART model, in this case for classification
+model_formula_1 <- as.formula(type ~ bone_length + rotting_flesh + hair_length + has_soul)
+tree_parameters_1 <- rpart.control(maxdepth = 5)
+model_CART_1 <- rpart(model_formula_1, data = training, control = tree_parameters_1)
+
+# Plot CART model
+plot(model_CART_1, margin=0.25)
+text(model_CART_1, use.n = TRUE)
+
+title("Predicting type of creature using bone length,% of rotting flesh, hair length, & % of soul")
+box()
+
+# Get fitted probabilities for each class on train
+type_hat_prob <- model_CART_1 %>%
+  predict(type = "prob", newdata = training) %>%
+  # Convert matrix object to data frame:
+  as_tibble()
+
+type_hat_prob
+
+type_hat_class <- model_CART_1 %>%
+  predict(type = "class", newdata = training) %>%
+  # Convert matrix object to data frame:
+  as_tibble()
+
+type_hat_class
+
+bind_cols(
+  # Observed y:
+  type = as.factor(training$type),
+  # Fitted probabilities for each class
+  type_hat_prob
+) %>%
+# Compute multi-class log-loss
+mn_log_loss(truth = type, c(Ghost, Ghoul, Goblin))
+
+
+
 
 ```
 
