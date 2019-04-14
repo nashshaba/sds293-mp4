@@ -165,14 +165,14 @@ type_hat_prob <- model_CART_1 %>%
   # Convert matrix object to data frame:
   as_tibble()
 
-type_hat_prob
+glimpse(type_hat_prob)
 
 type_hat_class <- model_CART_1 %>%
   predict(type = "class", newdata = training) %>%
   # Convert matrix object to data frame:
   as_tibble()
 
-type_hat_class
+glimpse(type_hat_class)
 
 bind_cols(
   # Observed y:
@@ -182,10 +182,6 @@ bind_cols(
 ) %>%
 # Compute multi-class log-loss
 mn_log_loss(truth = type, c(Ghost, Ghoul, Goblin))
-
-
-
-
 ```
 
 
