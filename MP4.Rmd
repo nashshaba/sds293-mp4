@@ -89,9 +89,10 @@ Perform the following exploratory data analyses:
 **Categorical predictor**: Create a visualization of the categorical predictor variable `color`.
 
 ```{r}
-ggplot(data=training,aes(x=color))+
-  geom_bar()+
-  labs(title="Distributuion of the categorical predictor variable", x="Dominant Color of the Creature")
+ggplot(data=training,aes(x=color, fill=color))+
+  geom_bar(color="grey1",show.legend = FALSE)+
+  labs(title="Distributuion of the categorical predictor variable", x="Dominant Color of the Creature") +
+  scale_fill_manual(values=c("grey1", "darkred", "blue","snow2","lawngreen","ghostwhite"))
 ```
 
 
