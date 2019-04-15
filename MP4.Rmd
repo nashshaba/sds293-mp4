@@ -169,7 +169,7 @@ type_hat_prob <- model_CART_1 %>%
 glimpse(type_hat_prob)
 
 type_hat_class <- model_CART_1 %>%
-  predict(type = "class", newdata = training) %>%
+  predict(type = "class", newdata = test) %>%
   # Convert matrix object to data frame:
   as_tibble()
 
@@ -200,11 +200,6 @@ Note that the $\alpha$ complexity parameter is the `cp` argument to `rpart.contr
 1. Plot the relationship between the alpha complexity parameter and accuracy.
 1. Using the optimal $\alpha^*$ complexity parameter, write a `submission.csv` suitable for submission to Kaggle.
 
-```{r}
-
-
-```
-
 
 ```{r}
 set.seed(76)
@@ -222,7 +217,7 @@ alpha_df <- tibble(
 for(i in 1:nrow(alpha_df)){
   alpha <- alpha_df$alpha[i]
   
-  alpha <- rep(0, 5)
+  CA <- rep(0, 5)
   for(j in 1:5){
     pretend_training <- training %>% 
       filter(fold != j)
@@ -230,35 +225,33 @@ for(i in 1:nrow(alpha_df)){
       filter(fold == j)
     
     # Fit model on pretend training
+    model_1 <- as.formula(type ~ bone_length + rotting_flesh + hair_length + has_soul)
+    tree_parameters <- rpart.control(maxdepth = 5, cp = alpha)
+    model_CART <- rpart(model_1, data = pretend_training, control = tree_parameters)
     
     # Make predictions
-  
-    # Save predictions in pretend_test data frame
-    pretend_test <- pretend_test %>% 
-      mutate(
-        log10_SalePrice_hat = predicted_points$y,
-        SalePrice_hat = 10^log10_SalePrice_hat
-      )
+    predicted_pretend_test <- model_CART %>%
+    predict(type = "class", newdata = pretend_test)
     
-    alpha[j] <- pretend_test %>% 
-      mutate(
-        residual = log(SalePrice + 1) - log(SalePrice_hat + 1),
-        residual_sq = residual^2
-      ) %>% 
-      summarize(
-        MLSE = mean(residual_sq),
-        RMLSE = sqrt(MLSE)
-      ) %>% 
-      pull(RMLSE)
+    pretend_test<-pretend_test%>%
+      mutate(y_hat = predicted_pretend_test)
+    
+    
+    # Save predictions in pretend_test data frame
+    
+    CA[j] <- pretend_test %>%
+      mutate(truth=ifelse(type==y_hat, 1, 0))%>%
+      summarise(CA = mean(truth==1))%>%
+      pull(CA)
   }
   
-  df_RMLSE$RMLSE[i] <- mean(RMLSE) 
+  alpha_df$accuracy[i] <- mean(CA)
 }
 ```
 
 #Visualization
 ```{r}
-ggplot(df_RMLSE, aes(x = df, y = RMLSE)) +
+ggplot(alpha_df, aes(x = alpha, y = accuracy)) +
   geom_line()
 ```
 
