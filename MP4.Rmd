@@ -201,18 +201,66 @@ Note that the $\alpha$ complexity parameter is the `cp` argument to `rpart.contr
 1. Using the optimal $\alpha^*$ complexity parameter, write a `submission.csv` suitable for submission to Kaggle.
 
 ```{r}
-alpha_df <- tibble(
-  alpha = seq(from = 0, to = 0.05, length = 100),
-  accuracy = 0
-)
-set.seed(76)
+
 
 ```
 
 
+```{r}
+set.seed(76)
 
+training <- training %>% 
+  sample_frac(1) %>% 
+  mutate(fold = rep(1:5, length = n())) %>% 
+  arrange(fold)
 
+alpha_df <- tibble(
+  alpha = seq(from = 0, to = 0.05, length = 100),
+  accuracy = 0
+)
 
+for(i in 1:nrow(alpha_df)){
+  alpha <- alpha_df$alpha[i]
+  
+  alpha <- rep(0, 5)
+  for(j in 1:5){
+    pretend_training <- training %>% 
+      filter(fold != j)
+    pretend_test <- training %>% 
+      filter(fold == j)
+    
+    # Fit model on pretend training
+    
+    # Make predictions
+  
+    # Save predictions in pretend_test data frame
+    pretend_test <- pretend_test %>% 
+      mutate(
+        log10_SalePrice_hat = predicted_points$y,
+        SalePrice_hat = 10^log10_SalePrice_hat
+      )
+    
+    alpha[j] <- pretend_test %>% 
+      mutate(
+        residual = log(SalePrice + 1) - log(SalePrice_hat + 1),
+        residual_sq = residual^2
+      ) %>% 
+      summarize(
+        MLSE = mean(residual_sq),
+        RMLSE = sqrt(MLSE)
+      ) %>% 
+      pull(RMLSE)
+  }
+  
+  df_RMLSE$RMLSE[i] <- mean(RMLSE) 
+}
+```
+
+#Visualization
+```{r}
+ggplot(df_RMLSE, aes(x = df, y = RMLSE)) +
+  geom_line()
+```
 
 ***
 
