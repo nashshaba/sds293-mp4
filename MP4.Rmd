@@ -154,11 +154,11 @@ tree_parameters_1 <- rpart.control(maxdepth = 5)
 model_CART_1 <- rpart(model_formula_1, data = training, control = tree_parameters_1)
 
 # Plot CART model
-plot(model_CART_1, margin=0.25)
+{plot(model_CART_1, margin=0.25)
 text(model_CART_1, use.n = TRUE)
 
 title("Predicting type of creature using bone length,% of rotting flesh, hair length, & % of soul")
-box()
+box()}
 
 # Get fitted probabilities for each class on train
 type_hat_prob <- model_CART_1 %>%
