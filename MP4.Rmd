@@ -169,9 +169,9 @@ type_hat_prob <- model_CART_1 %>%
 glimpse(type_hat_prob)
 
 type_hat_class <- model_CART_1 %>%
-  predict(type = "class", newdata = test) %>%
+  predict(type = "class", newdata = training) %>%
   # Convert matrix object to data frame:
-  as_tibble()
+  enframe()
 
 glimpse(type_hat_class)
 
@@ -183,13 +183,17 @@ bind_cols(
 ) %>%
 # Compute multi-class log-loss
 mn_log_loss(truth = type, c(Ghost, Ghoul, Goblin))
+
+
+CA<-training %>%
+  mutate(type_hat = type_hat_class$value,
+         true = ifelse(type_hat==type, 1, 0))%>%
+  summarise(mean(true==1))
 ```
 
 
 
-
 ***
-
 
 
 # Reaching for the stars
@@ -202,8 +206,7 @@ Note that the $\alpha$ complexity parameter is the `cp` argument to `rpart.contr
 
 
 ```{r}
-set.seed(76)
-
+set.seed(77)
 training <- training %>% 
   sample_frac(1) %>% 
   mutate(fold = rep(1:5, length = n())) %>% 
@@ -233,11 +236,10 @@ for(i in 1:nrow(alpha_df)){
     predicted_pretend_test <- model_CART %>%
     predict(type = "class", newdata = pretend_test)
     
+     # Save predictions in pretend_test data frame
     pretend_test<-pretend_test%>%
       mutate(y_hat = predicted_pretend_test)
     
-    
-    # Save predictions in pretend_test data frame
     
     CA[j] <- pretend_test %>%
       mutate(truth=ifelse(type==y_hat, 1, 0))%>%
@@ -249,10 +251,27 @@ for(i in 1:nrow(alpha_df)){
 }
 ```
 
+
 #Visualization
 ```{r}
 ggplot(alpha_df, aes(x = alpha, y = accuracy)) +
   geom_line()
+```
+
+Optimal alpha level = 0.0055555556
+
+```{r}
+optimal_model <- as.formula(type ~ bone_length + rotting_flesh + hair_length + has_soul)
+tree_parameters <- rpart.control(maxdepth = 5, cp = .0056)
+model_CART_optimal <- rpart(optimal_model, data = training, control = tree_parameters)
+    
+predicted_points_optimal <- model_CART_optimal %>%
+    predict(type = "class", newdata = test)%>%
+  enframe()
+    
+colnames(predicted_points_optimal)[1]<-"id"
+
+write_csv(predicted_points_optimal, path = "data/submission.csv")
 ```
 
 ***
@@ -266,6 +285,21 @@ ggplot(alpha_df, aes(x = alpha, y = accuracy)) +
 
 ![](one_hot_encoding.png)
 
+```{r}
+training<-training%>%
+  mutate(black = ifelse(color == "black", 1, 0),
+         blood = ifelse(color == "blood", 1, 0),
+         blue = ifelse(color == "blue", 1, 0),
+         clear = ifelse(color == "clear", 1, 0),
+         white = ifelse(color == "white", 1, 0))
 
+# Fit CART model, in this case for classification
+model_formula_2 <- as.formula(type ~ black+blue+blood+clear+white)
+model_CART_2 <- rpart(model_formula_2, data = training, control = tree_parameters_1)
+
+# Plot CART model
+plot(model_CART_2, margin=0.25)
+text(model_CART_2, use.n = TRUE)
+```
 
 
