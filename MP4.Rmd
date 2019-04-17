@@ -162,27 +162,31 @@ box()}
 
 # Get fitted probabilities for each class on train
 type_hat_prob <- model_CART_1 %>%
-  predict(type = "prob", newdata = training) %>%
+  predict(type = "prob", newdata = training)%>%
   # Convert matrix object to data frame:
   as_tibble()
 
 glimpse(type_hat_prob)
 
+#Get fitted ys, where highest probability wins and ties are broken at random
 type_hat_class <- model_CART_1 %>%
-  predict(type = "class", newdata = test) %>%
+  predict(type = "class", newdata = training) %>%
   # Convert matrix object to data frame:
-  as_tibble()
+  enframe()
 
 glimpse(type_hat_class)
+```
 
-bind_cols(
-  # Observed y:
-  type = as.factor(training$type),
-  # Fitted probabilities for each class
-  type_hat_prob
-) %>%
-# Compute multi-class log-loss
-mn_log_loss(truth = type, c(Ghost, Ghoul, Goblin))
+##Comparison
+If we look at the output of type_hat_prob and type_hat_class then we can see that type_hat_prob returns fitted probabilities for each class whereas type_hat_class returns fitted ys by picking a winner based on the maximum probability. In other words, the highest probability wins.
+
+```{r}
+#Compute the “classification accuracy”.
+training <- training %>%
+      mutate(type_hat = type_hat_class$value)  
+
+CA <- sum(training$type == training$type_hat)/nrow(training)
+CA
 ```
 
 
@@ -202,7 +206,6 @@ Note that the $\alpha$ complexity parameter is the `cp` argument to `rpart.contr
 
 
 ```{r}
-set.seed(76)
 
 training <- training %>% 
   sample_frac(1) %>% 
@@ -231,18 +234,21 @@ for(i in 1:nrow(alpha_df)){
     
     # Make predictions
     predicted_pretend_test <- model_CART %>%
-    predict(type = "class", newdata = pretend_test)
+      predict(type = "class", newdata = pretend_test)##%>%
+      ##enframe()
     
     pretend_test<-pretend_test%>%
       mutate(y_hat = predicted_pretend_test)
     
     
     # Save predictions in pretend_test data frame
-    
     CA[j] <- pretend_test %>%
       mutate(truth=ifelse(type==y_hat, 1, 0))%>%
       summarise(CA = mean(truth==1))%>%
       pull(CA)
+
+    
+    #CA[j] <- sum(pretend_test$type == pretend_test$y_hat)/nrow(pretend_test) 
   }
   
   alpha_df$accuracy[i] <- mean(CA)
@@ -265,6 +271,7 @@ ggplot(alpha_df, aes(x = alpha, y = accuracy)) +
 * No need to generate an estimate of the accuracy that Kaggle would return. 
 
 ![](one_hot_encoding.png)
+
 
 
 
