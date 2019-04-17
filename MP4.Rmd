@@ -37,9 +37,7 @@ set.seed(76)
 You will be fitting CART models to the data from the [Ghouls, Goblins, and Ghosts... Boo!](https://www.kaggle.com/c/ghouls-goblins-and-ghosts-boo/){target="_blank"} Kaggle competition. The competition's score for leaderboard purposes is the "Categorization Accuracy". However you will **NOT** be making any submissions to Kaggle.
 
 
-
 ***
-
 
 
 # Load data
@@ -121,14 +119,9 @@ ggpairs(training, columns = c("bone_length", "rotting_flesh", "hair_length","has
 ```{r}
 ggplot(training, aes(x = color, fill = type)) +
   geom_bar(position = "fill") +
-  labs(fill = "Types of creature", title = " Figure 1: Distribution of color of creature split by creature type", y="Proportion") 
+  labs(fill = "Types of creature", title = "Distribution of color of creature split by creature type", y="Proportion") 
 ```
 
-```{r}
-ggplot(data=training,aes(x=type, y=rotting_flesh))+
-  geom_boxplot()+
-  labs(x="Creature Type", y="% of rotting flesh in the creature",title = "Figure 2: Distribution of percentage of rotting flesh split by type of creature") 
-```
 
 
 
@@ -159,49 +152,24 @@ text(model_CART_1, use.n = TRUE)
 
 title("Predicting type of creature using bone length,% of rotting flesh, hair length, & % of soul")
 box()}
+```
 
-# Get fitted probabilities for each class on train
-type_hat_prob <- model_CART_1 %>%
-  predict(type = "prob", newdata = training)%>%
-  # Convert matrix object to data frame:
-  as_tibble()
 
+
+
+
+
+```{r}
+# Make predictions on training
 #Get fitted ys, where highest probability wins and ties are broken at random
 type_hat_class <- model_CART_1 %>%
-  predict(type = "class", newdata = training) ##%>%
-  # Convert matrix object to data frame:
-  ##enframe()
-type_hat_class_temp <- model_CART_1 %>%
-  predict(type = "class", newdata = training) %>%
-  as.tibble()
-#Rename value to type_hat
-colnames(type_hat_class_temp)[1]<-"type_hat"
-#Convert id colum to be numeric
-#type_hat_class$id <- as.numeric(as.character(type_hat_class$id))
+  predict(type = "class", newdata = training)
 
-
-```
-
-```{r}
-#If we look at the output of type_hat_prob and type_hat_class then we can see that type_hat_prob returns fitted probabilities for each class whereas type_hat_class returns fitted ys by picking a winner based on the maximum probability. In other words, the highest probability wins.
-
-head(type_hat_prob, n=2)
-head(type_hat_class_temp, n=2)
-
-```
-
-
-
-```{r}
 # Save predictions in training data frame
 training <- training %>%
       mutate(type_hat = type_hat_class)  
 
-#First way to compute CA
-#CA1 <- sum(training$type == training$type_hat)/nrow(training)
-#CA1
-
-#Second way to compute CA
+#Compute "classification accuracy"
 CA<-training %>%
   mutate(type_hat = training$type_hat,
          true = ifelse(type_hat==type, 1, 0))%>%
@@ -255,24 +223,22 @@ for(i in 1:nrow(alpha_df)){
     tree_parameters <- rpart.control(maxdepth = 5, cp = alpha)
     model_CART <- rpart(model_1, data = pretend_training, control = tree_parameters)
     
-    # Make predictions
+    # Make predictions on pretend_test
     predicted_pretend_test <- model_CART %>%
-      predict(type = "class", newdata = pretend_test)##%>%
-      ##enframe()
+      predict(type = "class", newdata = pretend_test)
     
      # Save predictions in pretend_test data frame
     pretend_test<-pretend_test%>%
       mutate(y_hat = predicted_pretend_test)
 
+    #Compute "classification accuracy" for each fold
     CA[j] <- pretend_test %>%
       mutate(truth=ifelse(type==y_hat, 1, 0))%>%
       summarise(CA = mean(truth==1))%>%
       pull(CA)
-
-    
-    #CA[j] <- sum(pretend_test$type == pretend_test$y_hat)/nrow(pretend_test) 
   }
   
+  # Compute average "classification accuracy""
   alpha_df$accuracy[i] <- mean(CA)
 }
 ```
@@ -285,16 +251,35 @@ ggplot(alpha_df, aes(x = alpha, y = accuracy)) +
 ```
 
 
-##Get optimal alpha
+###Get optimal alpha
 ```{r}
+
 rearr_alpha_df <- alpha_df%>%
-  arrange(desc(accuracy))
+  #arrange accuracy in descending order, with the maximum value at the top
+  arrange(desc(accuracy))%>%
+  #the first/ topmost row of alpha_df after rearrangement
+  head(1)
 
-optimal_alpha <- rearr_alpha_df$alpha[[1]]
-
-optimal_alpha
+# Display maximum value for accuracy and its corresponding alpha value
+rearr_alpha_df
 ```
-Optimal alpha level = 0.0055555556
+
+###**Note:**
+Something is going wrong with our set.seed, so every time we run the CV we get a different classification accuracy and alpha value. However, after plotting the resulting alpha vs acccuracy plots below from multiple tries of the code, we still found that the alpha level corresponding to the maximum accuracy was approximately .0056 every time. Therefore, we set $\alpha^*$ = .0056. 
+
+**Optimal alpha level** = 0.0055555556
+
+The **estimated classification accuracy** is **0.6955315** when **$\alpha^*$** is **0.0055555556**.
+
+
+
+Plot1
+![](plot1.png)
+Plot2
+![](plot2.png)
+
+Plot3
+![](plot3.png)
 
 ```{r}
 optimal_model <- as.formula(type ~ bone_length + rotting_flesh + hair_length + has_soul)
@@ -314,6 +299,7 @@ predicted_points_optimal <- model_CART_optimal %>%
 
 write_csv(submission, path = "data/submission.csv")
 ```
+ 
 
 ***
 
@@ -326,7 +312,9 @@ write_csv(submission, path = "data/submission.csv")
 
 ![](one_hot_encoding.png)
 
+
 ```{r}
+# One-hot encoding for the color variable
 training<-training%>%
   mutate(black = ifelse(color == "black", 1, 0),
          blood = ifelse(color == "blood", 1, 0),
@@ -345,6 +333,3 @@ text(model_CART_2, use.n = TRUE)
 title("Predicting type of creature using the categorical variable, color")
 box()}
 ```
-
-
-
