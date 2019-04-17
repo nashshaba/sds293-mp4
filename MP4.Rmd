@@ -96,11 +96,11 @@ ggplot(data=training,aes(x=color, fill=color))+
 ```
 
 
-**Outcome variable**: Create a visualization of the categorical predictor variable `type`.
+**Outcome variable**: Create a visualization of the categorical outcome variable `type`.
 
 ```{r}
 ggplot(data=training,aes(x=type))+
-  geom_bar(fill="bisque4")+
+  geom_bar()+
   labs(title="Distributuion of the categorical outcome variable", x="Creature Type")
 ```
 
@@ -110,10 +110,10 @@ ggplot(data=training,aes(x=type))+
 **Numerical predictors**: Create a visualization of the relationship of all four numerical predictor variables at once (`bone_length`, `rotting_flesh`, `hair_length`, `has_soul`) using the `ggpairs()` function from the `GGally` [package](http://ggobi.github.io/ggally/#ggallyggpairs). 
 
 ```{r}
-plot <- ggpairs(training, columns = c("bone_length", "rotting_flesh", "hair_length","has_soul"), columnLabels = c("Avg bone length", "% of rotting flesh", "Avg hair length","% of soul"))+
+ggpairs(training, columns = c("bone_length", "rotting_flesh", "hair_length","has_soul"), columnLabels = c("Avg bone length", "% of rotting flesh", "Avg hair length","% of soul"))+
   labs(title = "Relationship between all four numerical predictor variables")
 
-plot
+
 ```
 
 **Relationship of categorical predictor and outcome variable**: Create a visualization of the relationship between the categorical outcome variable `type` and any predictor varible of your choosing.
@@ -121,13 +121,13 @@ plot
 ```{r}
 ggplot(training, aes(x = color, fill = type)) +
   geom_bar(position = "fill") +
-  labs(fill = "Types of creature", title = "Distribution of color of creature split by creature type", y="Proportion") 
+  labs(fill = "Types of creature", title = " Figure 1: Distribution of color of creature split by creature type", y="Proportion") 
 ```
 
 ```{r}
 ggplot(data=training,aes(x=type, y=rotting_flesh))+
   geom_boxplot()+
-  labs(x="Creature Type", y="% of rotting flesh in the creature",title = "Distribution of percentage of rotting flesh split by type of creature") 
+  labs(x="Creature Type", y="% of rotting flesh in the creature",title = "Figure 2: Distribution of percentage of rotting flesh split by type of creature") 
 ```
 
 
@@ -148,7 +148,7 @@ ggplot(data=training,aes(x=type, y=rotting_flesh))+
 
 ```{r, fig.height = 9, fig.width=16}
 
-# Fit CART model, in this case for classification
+# Fit CART model using only numerical predictors, in this case for classification
 model_formula_1 <- as.formula(type ~ bone_length + rotting_flesh + hair_length + has_soul)
 tree_parameters_1 <- rpart.control(maxdepth = 5)
 model_CART_1 <- rpart(model_formula_1, data = training, control = tree_parameters_1)
@@ -166,34 +166,56 @@ type_hat_prob <- model_CART_1 %>%
   # Convert matrix object to data frame:
   as_tibble()
 
-glimpse(type_hat_prob)
-
 #Get fitted ys, where highest probability wins and ties are broken at random
 type_hat_class <- model_CART_1 %>%
-  predict(type = "class", newdata = training) %>%
+  predict(type = "class", newdata = training) ##%>%
   # Convert matrix object to data frame:
-  enframe()
+  ##enframe()
+type_hat_class_temp <- model_CART_1 %>%
+  predict(type = "class", newdata = training) %>%
+  as.tibble()
+#Rename value to type_hat
+colnames(type_hat_class_temp)[1]<-"type_hat"
+#Convert id colum to be numeric
+#type_hat_class$id <- as.numeric(as.character(type_hat_class$id))
 
-glimpse(type_hat_class)
+
 ```
 
-##Comparison
-If we look at the output of type_hat_prob and type_hat_class then we can see that type_hat_prob returns fitted probabilities for each class whereas type_hat_class returns fitted ys by picking a winner based on the maximum probability. In other words, the highest probability wins.
+```{r}
+#If we look at the output of type_hat_prob and type_hat_class then we can see that type_hat_prob returns fitted probabilities for each class whereas type_hat_class returns fitted ys by picking a winner based on the maximum probability. In other words, the highest probability wins.
+
+head(type_hat_prob, n=2)
+head(type_hat_class_temp, n=2)
+
+```
+
+
 
 ```{r}
-#Compute the “classification accuracy”.
+# Save predictions in training data frame
 training <- training %>%
-      mutate(type_hat = type_hat_class$value)  
+      mutate(type_hat = type_hat_class)  
 
-CA <- sum(training$type == training$type_hat)/nrow(training)
+#First way to compute CA
+#CA1 <- sum(training$type == training$type_hat)/nrow(training)
+#CA1
+
+#Second way to compute CA
+CA<-training %>%
+  mutate(type_hat = training$type_hat,
+         true = ifelse(type_hat==type, 1, 0))%>%
+  summarise(CA=mean(true==1))
+
 CA
 ```
 
 
 
 
-***
 
+
+***
 
 
 # Reaching for the stars
@@ -206,6 +228,7 @@ Note that the $\alpha$ complexity parameter is the `cp` argument to `rpart.contr
 
 
 ```{r}
+set.seed(77)
 
 training <- training %>% 
   sample_frac(1) %>% 
@@ -237,11 +260,10 @@ for(i in 1:nrow(alpha_df)){
       predict(type = "class", newdata = pretend_test)##%>%
       ##enframe()
     
+     # Save predictions in pretend_test data frame
     pretend_test<-pretend_test%>%
       mutate(y_hat = predicted_pretend_test)
-    
-    
-    # Save predictions in pretend_test data frame
+
     CA[j] <- pretend_test %>%
       mutate(truth=ifelse(type==y_hat, 1, 0))%>%
       summarise(CA = mean(truth==1))%>%
@@ -255,10 +277,42 @@ for(i in 1:nrow(alpha_df)){
 }
 ```
 
+
 #Visualization
 ```{r}
 ggplot(alpha_df, aes(x = alpha, y = accuracy)) +
   geom_line()
+```
+
+
+##Get optimal alpha
+```{r}
+rearr_alpha_df <- alpha_df%>%
+  arrange(desc(accuracy))
+
+optimal_alpha <- rearr_alpha_df$alpha[[1]]
+
+optimal_alpha
+```
+Optimal alpha level = 0.0055555556
+
+```{r}
+optimal_model <- as.formula(type ~ bone_length + rotting_flesh + hair_length + has_soul)
+tree_parameters <- rpart.control(maxdepth = 5, cp = .0056)
+model_CART_optimal <- rpart(optimal_model, data = training, control = tree_parameters)
+    
+predicted_points_optimal <- model_CART_optimal %>%
+    predict(type = "class", newdata = test)
+
+#Save predictions in test data frame
+    test<-test%>%
+      mutate(type_hat = predicted_points_optimal)
+    
+#Submission data frame
+    submission <- test %>%
+      select(id,type_hat)
+
+write_csv(submission, path = "data/submission.csv")
 ```
 
 ***
@@ -272,7 +326,25 @@ ggplot(alpha_df, aes(x = alpha, y = accuracy)) +
 
 ![](one_hot_encoding.png)
 
+```{r}
+training<-training%>%
+  mutate(black = ifelse(color == "black", 1, 0),
+         blood = ifelse(color == "blood", 1, 0),
+         blue = ifelse(color == "blue", 1, 0),
+         clear = ifelse(color == "clear", 1, 0),
+         white = ifelse(color == "white", 1, 0))
 
+# Fit CART model, in this case for classification
+model_formula_2 <- as.formula(type ~ black+blue+blood+clear+white)
+model_CART_2 <- rpart(model_formula_2, data = training, control = tree_parameters_1)
+
+# Plot CART model
+{plot(model_CART_2, margin=0.25)
+text(model_CART_2, use.n = TRUE)
+
+title("Predicting type of creature using the categorical variable, color")
+box()}
+```
 
 
 
